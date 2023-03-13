@@ -170,7 +170,7 @@ def high_pass_filter(img, mask =1 / 9 * np.array([[-1, -1, -1], [-1, 8, -1], [-1
 
 def high_filter(img, a, b = 1, filter_type = "High Boost"):
     # HBF = (A-1)*Original + HPF, A > 1
-    # HFEF = A*Original + HPF , A > 1, B > A
+    # HFEF = A*Original + B*HPF , A > 1, B > A
     allowable_filter_types = ["High Boost", "High Frequency Emphasis"]
 
     if filter_type not in allowable_filter_types:
