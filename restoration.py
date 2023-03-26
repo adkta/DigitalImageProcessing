@@ -2,11 +2,10 @@ import math
 from math import floor
 
 from skimage import io, img_as_ubyte
-from spatial import zeropad_greylevel_extremities, show_image
+from spatial import zeropad_greylevel_extremities
 import scipy as sp
 import numpy as np
 import matplotlib as mpl
-from matplotlib import pyplot as plt
 from frequency import distance
 
 
@@ -59,7 +58,7 @@ def handle_intensity(l):
     return floor(l)
 
 def handle_intensity_ndarray(x):
-    if type(x) != "ndarray":
+    if not isinstance(x, np.ndarray):
         raise Exception("This function only accepts ndarray at this time.")
 
     with np.nditer(x, op_flags=['readwrite']) as it:
@@ -75,7 +74,10 @@ def geometric_mean(img, window_size):
     op_img = np.empty((row_num, col_num))
     for i in range(row_num - window_size + 1):
         for j in range(col_num - window_size + 1):
-            op_img[i, j] = handle_intensity(sp.stats.gmean(get_window(img, window_size, i, j), axis=None))
+            window = get_window(img, window_size, i, j)
+            gmean = sp.stats.gmean(window, axis=None)
+            print(f"Window: {window} \n Geometric mean: {gmean}")
+            op_img[i, j] = handle_intensity(gmean)
     return op_img
 
 def harmonic_mean(img, window_size):
@@ -88,7 +90,7 @@ def harmonic_mean(img, window_size):
     return op_img
 
 
-def contraharmonic_mean(img, window_size, q):
+def contraharmonic_mean_filter(img, window_size, q):
     row_num, col_num = img.shape
     img = zeropad_greylevel_extremities(img, int((window_size - 1) / 2))
     op_img = np.empty((row_num, col_num))
@@ -99,12 +101,16 @@ def contraharmonic_mean(img, window_size, q):
 
 
 def contraharmonic_mean(a, q):
-    if type(a) != 'ndarray':
+    if not isinstance(a, np.ndarray):
         print("Only accepting one numpy array as argument to this method for now")
         return None
-    numerator = math.pow((a, q))
-    denominator = math.pow((a,q-1))
-    return np.divide(numerator, denominator)
+    numerator = 0
+    denominator = 0
+    with np.nditer(a) as it:
+        for value in it:
+            numerator += 0 if value == 0 else math.pow(value, q+1)
+            denominator += 0 if value ==0 else math.pow (value, q)
+    return 0 if denominator == 0 else np.divide( numerator, denominator )
 
 
 def midpoint_filter(img, window_size):
@@ -139,7 +145,7 @@ def alpha_trimmed_mean_filter(img, window_size, d ):
         for j in range(col_num):
             window = get_window(img, window_size, i, j)
             sorted = np.sort(window, axis=None)
-            trimmed = sorted[int(d/2):window_size-int(d/2)]
+            trimmed = sorted[int(d/2):(window_size*window_size)-int(d/2)]
             op_img[i,j] = handle_intensity(np.mean(trimmed))
     return op_img
 
@@ -231,19 +237,38 @@ def adaptive_mean_filter(img, noise_var, window_size):
     row_num, col_num = img.shape
     img = zeropad_greylevel_extremities(img, int((window_size - 1) / 2))
     op_img = np.empty((row_num, col_num))
-    central_pixel_del_x=(window_size-1)/2
+    central_pixel_del_x=int((window_size-1)/2)
     central_pixel_del_y=central_pixel_del_x
     for i in range(row_num):
         for j in range(col_num):
             window = get_window(img, window_size, i, j)
             local_var = np.var(window)
-            noise_to_signal = noise_var/local_var
-            if noise_var>local_var:
-                noise_to_signal=1
-            central_pixel = window[central_pixel_del_x, central_pixel_del_x]
-            op_img[i,j] =  handle_intensity(central_pixel + (noise_var/local_var)*(central_pixel - np.mean(window,axis=None)))
+            noise_to_signal = 1
+            if noise_var<local_var:
+                noise_to_signal = noise_var / local_var
+            central_pixel = window[central_pixel_del_x, central_pixel_del_y]
+            op_img[i,j] =  handle_intensity(central_pixel - (noise_to_signal*(central_pixel - np.mean(window,axis=None))))
     return op_img
 
+
+def adaptive_mean_filter_ver2(img, noise, window_size):
+    row_num, col_num = img.shape
+    img = zeropad_greylevel_extremities(img, int((window_size - 1) / 2))
+    op_img = np.empty((row_num, col_num))
+    central_pixel_del_x=int((window_size-1)/2)
+    central_pixel_del_y=central_pixel_del_x
+    for i in range(row_num):
+        for j in range(col_num):
+            img_window = get_window(img, window_size, i, j)
+            noise_window = get_window(noise, window_size, i, j)
+            local_var = np.var(img_window)
+            noise_var = np.var(noise_window)
+            noise_to_signal = 1
+            if noise_var<local_var:
+                noise_to_signal = noise_var / local_var
+            central_pixel = img_window[central_pixel_del_x, central_pixel_del_y]
+            op_img[i,j] =  handle_intensity(central_pixel + noise_to_signal*(central_pixel - np.mean(img_window,axis=None)))
+    return op_img
 
 def adaptive_median_filter(img, max_window_size):
     row_num, col_num = img.shape
@@ -271,14 +296,24 @@ def adaptive_median_filter(img, max_window_size):
                 op_img[i,j] = z
     return op_img
 
+def normalize(img, max_val=255, integer_val=True):
+    max_intensity = np.max(img)
+    img = img * max_val / max_intensity
+    if integer_val:
+        img = handle_intensity_ndarray(img)
+    return img
+
+
+
 
 #Change colour map from viridis to gray
 mpl.rc('image', cmap='gray')
 font = {'size': 5}
 mpl.rc('font', **font)
 
-img = io.imread("/Users/newuser/COURSE MATERIALS/078MSICE/SEM III/Digital Image Processing/Assignment/Images/shapes_and_a.jpg", as_gray=True)
+img = io.imread("/Users/newuser/COURSE MATERIALS/078MSICE/SEM III/Digital Image Processing/Assignment/Images/pcb_2.jpg", as_gray=True)
 img = img_as_ubyte(img)
+# show_image(img)
 # fig, axes = plt.subplots(1,2)
 # axes[0].imshow(img)
 # axes[1].imshow(alpha_trimmed_mean_filter(img, window_size=3, d = 8))
@@ -288,7 +323,9 @@ img = img_as_ubyte(img)
 # show_image(get_butterworth_bandpass_filter(img, 100, 20, 2))
 # show_image(get_gaussian_band_pass_filter(img, 100, 20))
 
-op_img = adaptive_median_filter(img, 5)
-print(op_img)
+# op_img = adaptive_median_filter(img, 5)
+# print(op_img)
 # show_image(op_img)
+
+
 
