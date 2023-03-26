@@ -197,7 +197,7 @@ def handle_out_of_range_ndarray(img):
     with np.nditer(img, op_flags=['readwrite']) as it:
         for x in it:#specifying op_flags as write also since we wan't to modify the image intensity ndarray
             x[...]=handle_out_of_range(x)
-
+    return img
 
 def laplacian(img, mask = np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])):
     """
