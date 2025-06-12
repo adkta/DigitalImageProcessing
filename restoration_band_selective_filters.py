@@ -1,0 +1,25 @@
+import restoration
+from skimage import io
+from matplotlib import pyplot as plt
+
+img = io.imread("/Users/newuser/COURSE MATERIALS/078MSICE/SEM III/Digital Image Processing/Assignment/Images/periodic_noise.png", as_gray=True)
+h_uv_ibrf = restoration.get_ideal_band_reject_filter(img=img,d0=60,W=7)
+h_uv_bwbrf = restoration.get_butterworth_band_reject_filter(img=img,d0=60,W=7,order=2)
+h_uv_gbrf = restoration.get_gaussian_band_reject_filter(img=img,d0=60,W=7)
+h_uv_ibpf = restoration.get_ideal_band_pass_filter(img=img,d0=60,W=7)
+h_uv_bwbpf = restoration.get_butterworth_bandpass_filter(img=img,d0=60,W=7,order=2)
+h_uv_gbpf = restoration.get_gaussian_band_pass_filter(img=img,d0=60,W=7)
+fig, axes = plt.subplots(2, 3)
+axes[0,0].imshow(h_uv_ibpf)
+axes[0,0].title.set_text("Ideal Band-pass Filter")
+axes[1,0].imshow(h_uv_ibrf)
+axes[1,0].title.set_text("Ideal Band-reject Filter")
+axes[0,1].imshow(h_uv_bwbpf)
+axes[0,1].title.set_text("Butterworth Band-pass Filter")
+axes[1,1].imshow(h_uv_bwbrf)
+axes[1,1].title.set_text("Butterworth Band-reject Filter")
+axes[0,2].imshow(h_uv_gbpf)
+axes[0,2].title.set_text("Gaussian Band-pass Filter")
+axes[1,2].imshow(h_uv_gbrf)
+axes[1,2].title.set_text("Gaussian Band-reject Filter")
+plt.show()
